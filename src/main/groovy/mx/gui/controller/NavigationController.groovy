@@ -1,0 +1,262 @@
+package mx.gui.controller
+
+import javafx.beans.property.DoubleProperty
+import javafx.beans.property.SimpleDoubleProperty
+import javafx.event.EventHandler
+import javafx.fxml.FXML
+import javafx.scene.control.Button
+import javafx.scene.control.Label
+import javafx.scene.control.ProgressBar
+import javafx.scene.control.ProgressIndicator
+import javafx.scene.control.RadioButton
+import javafx.scene.control.Tab
+import javafx.scene.control.TabPane
+import javafx.scene.control.TextField
+import javafx.scene.input.MouseEvent
+import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.FlowPane
+import javafx.scene.layout.HBox
+import javafx.scene.layout.StackPane
+import javafx.scene.layout.VBox
+import javafx.scene.shape.Circle
+import javafx.stage.FileChooser
+import mx.core.InstallerProcess
+import mx.gui.UiTracker
+import mx.retriever.BlockDevice
+import mx.retriever.RemoteHost
+import mx.retriever.RemoteUser
+import mx.retriever.TaskHelper
+
+class NavigationController {
+
+    @FXML
+    ProgressBar progressBarForAuthentication, progressBarForStorageOne
+    @FXML
+    ProgressIndicator progressIndicatorForAuthentication, progressIndicatorForStorageOne
+    DoubleProperty authenticationProgressProperty = new SimpleDoubleProperty(0.0), storageProgressProperty = new SimpleDoubleProperty(0.0)
+
+    // Cleaning after this comment
+
+    @FXML
+    protected void changeContent(MouseEvent event) {
+        UiTracker uiTracker = UiTracker.getInstance()
+        Button button = (Button) event.source
+        String id = button.id
+
+        // Switching current step.
+        if (id == "nextButton" && uiTracker.currentStep < 4) {
+            ++uiTracker.currentStep
+        } else if (id == "backButton" && uiTracker.currentStep > 0) {
+            --uiTracker.currentStep
+        }
+
+        // Setting param values
+        if (uiTracker.currentStep == 3) {
+            Set serverNames = uiTracker.serverData.keySet()
+            serverNames.each {
+                Map serverDataMap = uiTracker.serverData["$it"] as Map
+
+                HBox uiComponent = (HBox) serverDataMap.uiComponent
+                String ipAddress = ((TextField) uiComponent.children[1]).text
+                File sshKey = uiTracker.serverData["$it"]["sshKey"]
+                RemoteUser remoteUser = new RemoteUser(user: "root", sshKey: sshKey)
+                RemoteHost remoteHost = new RemoteHost(ipAddress: ipAddress, sshPort: 22)
+                serverDataMap.remoteUser = remoteUser
+                serverDataMap.remoteHost = remoteHost
+            }
+        } else if (uiTracker.currentStep == 4) {
+            uiTracker.staticUiComponents.middlePane.children.clear()
+            String params = uiTracker.serverData
+            uiTracker.staticUiComponents.middlePane.children.add(new Label(params))
+            println params
+
+
+            InstallerProcess installerProcess = new InstallerProcess()
+            installerProcess.installOpenStackSwift(uiTracker.serverData.allInOne as Map, uiTracker.serverData.allInOne as Map)
+            RemoteHost authentication = uiTracker.serverData.allInOne.remoteHost as RemoteHost
+            RemoteUser rootUser = uiTracker.serverData.allInOne.remoteUser as RemoteUser
+            /*InstallerProcess.startInstallation(authentication.ipAddress,
+                    rootUser.sshKey,
+                    authentication.ipAddress,
+                    rootUser.sshKey, [includeAuthenticationInstallations: true, includeStorageInstallations: true, storageProgressProperty: new SimpleDoubleProperty(0.0), authenticationProgressProperty: new SimpleDoubleProperty(0.0)])*/
+
+            println "Start installation"
+        }
+
+        changeMiddlePane(uiTracker)
+        changeTopPane(uiTracker)
+    }
+
+    private changeTopPane(UiTracker uiTracker) {
+        if (uiTracker.currentStep == 0) {
+            uiTracker.staticUiComponents.topPane.children.clear()
+        } else if (uiTracker.currentStep in [1, 2, 3, 4]) {
+            HBox bubblesComponent = (HBox) uiTracker.customUiComponents.bubbles
+            List<StackPane> bubbles = bubblesComponent.children
+            bubbles*.children*.first().styleClass*.clear()
+            bubbles*.children*.first().styleClass*.add("bubble-unselected")
+            bubbles*.children*.last().styleClass*.add("label-unselected")
+
+
+            StackPane stack = bubbles.get(uiTracker.currentStep - 1)
+            Circle circle = ((Circle) stack.children.first())
+            Label label = ((Label) stack.children.last())
+            circle.styleClass.addAll("bubble-selected")
+            label.styleClass.addAll("label-selected")
+
+            uiTracker.staticUiComponents.topPane.children.clear()
+            uiTracker.staticUiComponents.topPane.children.add(bubblesComponent)
+        }
+    }
+
+    private changeMiddlePane(UiTracker uiTracker) {
+        uiTracker.staticUiComponents.middlePane.children.clear()
+
+        if (uiTracker.currentStep == 1) {
+            uiTracker.staticUiComponents.middlePane.children.add(uiTracker.getCurrentComponent())
+        } else if (uiTracker.currentStep == 2) {
+            uiTracker.serverData = [:]
+            loadContentForServerData(uiTracker)
+        } else if (uiTracker.currentStep == 3) {
+            // Get block devices
+            loadBlockDevice(uiTracker)
+        }
+    }
+
+    private loadContentForServerData(UiTracker uiTracker) {
+        uiTracker.staticUiComponents.middlePane.children.clear()
+        HBox installationTypeComponent = (HBox) uiTracker.customUiComponents.get("installationType")
+        RadioButton singleNode = ((VBox) installationTypeComponent.children.first()).children.first()
+        RadioButton twoNodes = ((VBox) installationTypeComponent.children.first()).children.last()
+
+        VBox column = new VBox()
+
+        if (singleNode.selected) {
+            HBox uniqueServerDataUIComponent = uiTracker.loadServerDataUIForm()
+            uniqueServerDataUIComponent.id = "allInOne"
+            uiTracker.serverData.allInOne = [uiComponent: uniqueServerDataUIComponent]
+            column.children.add(uniqueServerDataUIComponent)
+            addListenerToAll(uiTracker, uniqueServerDataUIComponent)
+        } else if (twoNodes.selected) {
+            HBox authenticationServerDataUIComponent = uiTracker.loadServerDataUIForm()
+            authenticationServerDataUIComponent.id = "authentication"
+            HBox centralStorageServerDataUIComponent = uiTracker.loadServerDataUIForm()
+            centralStorageServerDataUIComponent.id = "centralStorage"
+
+            uiTracker.serverData.authentication = [uiComponent: authenticationServerDataUIComponent]
+            uiTracker.serverData.centralStorage = [uiComponent: centralStorageServerDataUIComponent]
+            addListenerToAll(uiTracker, authenticationServerDataUIComponent, centralStorageServerDataUIComponent)
+
+            column.children.addAll(authenticationServerDataUIComponent, centralStorageServerDataUIComponent)
+        }
+
+        uiTracker.staticUiComponents.middlePane.children.clear()
+        uiTracker.staticUiComponents.middlePane.children.add(column)
+    }
+
+    void addListenerToAll(UiTracker uiTracker, HBox... dataUIComponents) {
+        dataUIComponents.each { dataUIComponent ->
+            ((Button) dataUIComponent.children.last()).setOnMouseClicked(new EventHandler<MouseEvent>() {
+                @Override
+                void handle(MouseEvent event) {
+                    final File sshKey = FileChooser.newInstance().showOpenDialog()
+                    uiTracker.serverData["${dataUIComponent.id}"]["sshKey"] = sshKey
+                }
+            })
+        }
+    }
+
+    void loadBlockDevice(UiTracker uiTracker) {
+        uiTracker.staticUiComponents.middlePane.children.clear()
+
+        TabPane tabPane = new TabPane()
+
+        // Get the Servers
+        Set storageServersData = uiTracker.serverData.keySet().findAll { it =~ "Storage" || it =~ "allInOne" }
+        storageServersData.each {
+            // For each Server
+            Map serverDataMap = uiTracker.serverData["$it"] as Map
+            /*HBox uiComponent = (HBox) serverDataMap.uiComponent*/
+            RemoteUser remoteUser = serverDataMap.remoteUser
+            RemoteHost remoteHost = serverDataMap.remoteHost
+            String ipAddress = remoteHost.ipAddress
+            File sshKey = remoteUser.sshKey
+
+            // Create Tab for node
+            Tab tab = new Tab("$ipAddress")
+
+            // Create General Container with [AnchorPane,FlowPane] for tab content
+            AnchorPane anchorPane = new AnchorPane()
+            FlowPane flowPane = new FlowPane()
+            anchorPane.children.add(flowPane)
+            AnchorPane.setLeftAnchor(tabPane, 0.0)
+            AnchorPane.setRightAnchor(tabPane, 0.0)
+            AnchorPane.setTopAnchor(tabPane, 0.0)
+            AnchorPane.setBottomAnchor(tabPane, 0.0)
+            tab.content = anchorPane
+
+            AnchorPane.setLeftAnchor(flowPane, 0.0)
+            AnchorPane.setRightAnchor(flowPane, 0.0)
+            AnchorPane.setTopAnchor(flowPane, 0.0)
+            AnchorPane.setBottomAnchor(flowPane, 0.0)
+
+            // BlockDevice list
+            List<BlockDevice> devices = []
+
+            // new Thread for retrieve the devices
+            Thread newThread = Thread.start {
+                TaskHelper taskHelper = new TaskHelper()
+                devices = taskHelper.getBlocksFromRemoteHost(remoteHost, remoteUser)
+            }
+
+            while (newThread.state != Thread.State.TERMINATED) {
+            }
+
+            devices.each { blockDevice ->
+
+                // Create and fill Device Button
+                AnchorPane wrapper = uiTracker.loadDisUIComponent()
+                HBox hwrapper = wrapper.children.first()
+                VBox vwrapper = hwrapper.children.last()
+
+                String deviceNameString = blockDevice.name.replace("\"", "")
+                hwrapper.properties.deviceName = deviceNameString
+
+                ((Label) vwrapper.children.get(0)).text = "Name: $deviceNameString"
+                ((Label) vwrapper.children.get(1)).text = "Size: $blockDevice.size $blockDevice.storageUnit".replace("\"", "")
+                ((Label) vwrapper.children.get(2)).text = "Mp: $blockDevice.mountpoint".replace("\"", "")
+                ((Label) vwrapper.children.get(3)).text = "B.T.: $blockDevice.type".replace("\"", "")
+
+                hwrapper.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                    @Override
+                    void handle(MouseEvent event) {
+                        String style = "-fx-background-color: #008CBA;"
+                        String textStyle = "-fx-text-fill: white;"
+                        if (!serverDataMap.devicesSelected) {
+                            serverDataMap.devicesSelected = new HashSet<String>()
+                        }
+
+                        String deviceName = hwrapper.properties.deviceName
+                        if (hwrapper.style =~ style) {
+                            hwrapper.style = ""
+                            hwrapper.children.last().children*.style = ""
+
+                            // Remove device from devices to use
+                            (serverDataMap.devicesSelected as HashSet).remove(deviceName)
+                        } else {
+                            hwrapper.style = style
+                            hwrapper.children.last().children*.style = textStyle
+
+                            // Add device to devices to use
+                            serverDataMap.devicesSelected << deviceName
+                        }
+                    }
+                })
+
+                flowPane.children.add(wrapper)
+            }
+            tabPane.tabs.add(tab)
+        }
+        uiTracker.staticUiComponents.middlePane.children.add(tabPane)
+    }
+}

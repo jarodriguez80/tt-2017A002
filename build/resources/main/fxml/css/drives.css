@@ -1,0 +1,22 @@
+.general-wrapper {
+}
+
+.disk-info-wrapper {
+	-fx-background-color: #d3d3d3;
+	-fx-border-radius: 10 10 10 10;
+  	-fx-background-radius: 10 10 10 10;
+
+}
+
+.disk-info-wrapper:hover {
+	-fx-background-color: skyblue;
+}
+
+.disk-info-text {
+	-fx-text-fill: #000000;
+	-fx-font-size: 12pt;
+}
+
+
+
+
