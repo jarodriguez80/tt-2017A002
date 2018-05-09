@@ -1,0 +1,7 @@
+.idea
+.gradle/
+build/
+out/
+src/resources/telegramBotId
+src/resources/telegramKey
+src/resources/sshKeys
