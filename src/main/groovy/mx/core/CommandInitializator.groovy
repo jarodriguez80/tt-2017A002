@@ -85,7 +85,7 @@ class CommandInitializator {
         populateKeystoneDatabaseCommands << "$authenticationScriptsDirectory/Keystone/linkUsersWithProjects.sh"
 
         restartMemcachedServiceCommand = "service memcached restart"
-        notificateToTelegramBotCommand = "$installerDirectory/Scripts/notificateToTelegram.sh \"Authentication Server\""
+        notificateToTelegramBotCommand = "$installerDirectory/Scripts/notificateToTelegram.sh ${getTelegramKey()} ${getTelegramBotId()} \"Authentication Server\""
     }
 
     def initializeCommandsForStorage(List<Map> replacementsOfConfigurationsForStorage,
@@ -151,7 +151,7 @@ class CommandInitializator {
         restartMemcachedServiceCommand = "service memcached restart"
         restartSwiftProxyServiceCommand = "service swift-proxy start"
 
-        notificateToTelegramBotAboutStorageCommand = "$installerDirectory/Scripts/notificateToTelegram.sh \"Storage Server\""
+        notificateToTelegramBotAboutStorageCommand = "$installerDirectory/Scripts/notificateToTelegram.sh ${getTelegramKey()} ${getTelegramBotId()} \"Storage Server\""
     }
 
     private createReplacementCommandsForAuthentication(List<Map> configurationForAuthentication) {
@@ -219,5 +219,13 @@ class CommandInitializator {
 
         commandsForStorage
 
+    }
+
+    String getTelegramKey() {
+        new File("src/resources/telegramKey").text
+    }
+
+    String getTelegramBotId() {
+        new File("src/resources/telegramBotId").text
     }
 }
