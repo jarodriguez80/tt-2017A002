@@ -1,0 +1,17 @@
+.bubble-pane > .bubble-unselected{
+	-fx-fill: #3d3d3d;
+}
+
+.bubble-pane > .label-unselected {
+	-fx-text-fill: #e4e4e4;
+	-fx-font-size: 12pt;
+}
+
+.bubble-pane > .bubble-selected{
+	-fx-fill: #008CBA;	
+}
+
+.bubble-pane > .label-selected {
+	-fx-font-size: 12pt;
+	-fx-text-fill: #e4e4e4;
+}

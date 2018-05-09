@@ -1,0 +1,10 @@
+.general-wrapper {
+}
+
+.general-wrapper > .disk-info-wrapper {
+	-fx-background-color: #d3d3d3;
+}
+
+.general-wrapper > .disk-info-label {
+	-fx-text-fill: #d3d3d3;
+}

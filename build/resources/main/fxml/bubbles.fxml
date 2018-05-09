@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.shape.*?>
+<?import java.lang.*?>
+<?import javafx.scene.layout.*?>
+
+<HBox alignment="CENTER_RIGHT" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="122.0" prefWidth="552.0" stylesheets="@css/bubbles.css" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <StackPane prefHeight="150.0" prefWidth="200.0" styleClass="bubble-pane">
+         <children>
+            <Circle fill="LIGHTGRAY" radius="60.0" stroke="BLACK" strokeType="INSIDE" styleClass="bubble-unselected" />
+            <Label prefHeight="67.0" prefWidth="110.0" styleClass="label-unselected" text="Choose Your Installation Type" textAlignment="CENTER" wrapText="true" />
+         </children>
+      </StackPane>
+      <StackPane prefHeight="150.0" prefWidth="200.0" styleClass="bubble-pane">
+         <children>
+            <Circle fill="LIGHTGRAY" radius="60.0" stroke="BLACK" strokeType="INSIDE" styleClass="bubble-unselected" />
+            <Label prefHeight="74.0" prefWidth="110.0" styleClass="label-unselected" text="Set Your Server Settings" textAlignment="CENTER" wrapText="true" />
+         </children>
+      </StackPane>
+      <StackPane prefHeight="150.0" prefWidth="200.0" styleClass="bubble-pane">
+         <children>
+            <Circle fill="LIGHTGRAY" radius="60.0" stroke="BLACK" strokeType="INSIDE" styleClass="bubble-unselected" />
+            <Label prefHeight="67.0" prefWidth="110.0" styleClass="label-unselected" text="Choose Your Devices Selection" textAlignment="CENTER" wrapText="true" />
+         </children>
+      </StackPane>
+      <StackPane prefHeight="150.0" prefWidth="200.0" styleClass="bubble-pane">
+         <children>
+            <Circle fill="LIGHTGRAY" radius="60.0" stroke="BLACK" strokeType="INSIDE" styleClass="bubble-unselected" />
+            <Label prefHeight="74.0" prefWidth="110.0" styleClass="label-unselected" text="Perform Installation" textAlignment="CENTER" wrapText="true" />
+         </children>
+      </StackPane>
+   </children>
+</HBox>
