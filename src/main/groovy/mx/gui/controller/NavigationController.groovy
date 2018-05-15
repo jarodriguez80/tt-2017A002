@@ -21,6 +21,8 @@ import javafx.scene.layout.VBox
 import javafx.scene.shape.Circle
 import javafx.stage.FileChooser
 import mx.core.InstallerProcess
+import mx.core.NodeTypes
+import mx.core.ProcessType
 import mx.gui.UiTracker
 import mx.retriever.BlockDevice
 import mx.retriever.RemoteHost
@@ -72,14 +74,28 @@ class NavigationController {
 
 
             InstallerProcess installerProcess = new InstallerProcess()
-            installerProcess.installOpenStackSwift(uiTracker.serverData.allInOne as Map, uiTracker.serverData.allInOne as Map)
-            RemoteHost authentication = uiTracker.serverData.allInOne.remoteHost as RemoteHost
-            RemoteUser rootUser = uiTracker.serverData.allInOne.remoteUser as RemoteUser
-            /*InstallerProcess.startInstallation(authentication.ipAddress,
-                    rootUser.sshKey,
-                    authentication.ipAddress,
-                    rootUser.sshKey, [includeAuthenticationInstallations: true, includeStorageInstallations: true, storageProgressProperty: new SimpleDoubleProperty(0.0), authenticationProgressProperty: new SimpleDoubleProperty(0.0)])*/
+            if ("allInOne" in uiTracker.serverData.keySet()) {
+                installerProcess.processType = ProcessType.ALL_IN_ONE
+            } else {
+                installerProcess.processType = ProcessType.DIVIDED
+            }
 
+
+            if (installerProcess.isAllInOneProcessType()) {
+                Map authenticationNode = uiTracker.serverData.allInOne
+                authenticationNode.types = [NodeTypes.ALL_IN_ONE, NodeTypes.CENTRAL_NODE_STORAGE, NodeTypes.AUTHENTICATION]
+                installerProcess.installOpenStackSwift(authenticationNode, authenticationNode, [])
+            } else if (installerProcess.isDividedProcessType()) {
+                Map authenticationNode = uiTracker.serverData.authentication
+                authenticationNode.types = [NodeTypes.AUTHENTICATION]
+
+                Map storageNode = uiTracker.serverData.centralStorage
+                storageNode.types = [NodeTypes.CENTRAL_NODE_STORAGE]
+
+                installerProcess.installOpenStackSwift(authenticationNode, storageNode, [])
+            }
+
+            // TODO Delete println
             println "Start installation"
         }
 
