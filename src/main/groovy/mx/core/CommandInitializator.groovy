@@ -2,12 +2,11 @@ package mx.core
 
 class CommandInitializator {
 
-    String installerDirectory
-    String authenticationScriptsDirectory
-    String authenticationConfDirectory
-    String storageScriptsDirectory
-    String storageConfDirectory
-
+    String installerDirectory = "/installer_files"
+    String authenticationConfDirectory = "$installerDirectory/Configuration/Authentication"
+    String authenticationScriptsDirectory = "$installerDirectory/Scripts/Authentication"
+    String storageConfDirectory = "$installerDirectory/Configuration/Storage"
+    String storageScriptsDirectory = "$installerDirectory/Scripts/Storage"
 
     def commandsForAuthentication = []
     List installationCommands = []
@@ -34,8 +33,8 @@ class CommandInitializator {
     String swifInitStartCommands
     String restartSwiftProxyServiceCommand
     String notificateToTelegramBotAboutStorageCommand
-    List createRingCommands = []
-    List sshCopyCommands = []
+    List ringSetupCommands = []
+    List secureCopyCommands = []
 
     void initializeCommandsForAuthentication(List<Map> configurationForAuthentication) {
 
@@ -65,6 +64,7 @@ class CommandInitializator {
         copyCommands << "cp $authenticationConfDirectory/keystone.conf /etc/keystone/"
         copyCommands << "cp $authenticationConfDirectory/proxy-server.conf /etc/swift/"
         copyCommands << "cp $authenticationConfDirectory/wsgi-keystone.conf /etc/apache2/sites-available/wsgi-keystone.conf"
+        copyCommands << "cp $authenticationConfDirectory/memcached.conf /etc/"
         restartDatabaseServiceCommand = "service mysql restart"
 
         setupKeystoneDatabaseCommands << "mysql < $installerDirectory/keystoneDatabase.sql -uroot -proot"
@@ -88,23 +88,32 @@ class CommandInitializator {
         notificateToTelegramBotCommand = "$installerDirectory/Scripts/notificateToTelegram.sh ${getTelegramKey()} ${getTelegramBotId()} \"Authentication Server\""
     }
 
-    def initializeCommandsForStorage(List<Map> replacementsOfConfigurationsForStorage,
-                                     Map currentStorageServer,
-                                     List<Map> storageServers,
-                                     List<Map> serversWithSwiftProxy,
-                                     boolean isCentralNode,
-                                     boolean thereAreManyNodesRunningSwiftProxy
-    ) {
+    List buildCommandsForAuthentication() {
+        List commandsForAuthentication = []
+
+        commandsForAuthentication += installationCommands
+        commandsForAuthentication += replacementCommands
+        commandsForAuthentication += copyCommands
+        commandsForAuthentication += restartDatabaseServiceCommand
+        commandsForAuthentication += setupKeystoneDatabaseCommands
+        commandsForAuthentication += configureWSGICommand
+        commandsForAuthentication += restartHTTPServerCommand
+        commandsForAuthentication += populateKeystoneDatabaseCommands
+        commandsForAuthentication += restartMemcachedServiceCommand
+        commandsForAuthentication += notificateToTelegramBotCommand
+
+        commandsForAuthentication
+
+    }
+
+    def initializeMandatoryCommandsForStorage(List<Map> replacementsOfConfigurationsForStorage,
+                                              Map currentStorageServer) {
         installationCommandsForStorage = []
         replacementCommandsForStorage = []
         prepareDeviceCommands = []
         copyCommandsForStorage = []
         configureRsynForStartInDaemonModeCommand = ""
         changeOwnerPrivilegesCommand = ""
-        swifInitStartCommands = ""
-        notificateToTelegramBotAboutStorageCommand = ""
-        createRingCommands = []
-        sshCopyCommands = []
 
         // Add repositories
         installationCommandsForStorage << "bash -c \"$installerDirectory/Scripts/updateRepositoresAndInstallOpenStackClient.sh\""
@@ -115,43 +124,102 @@ class CommandInitializator {
         // Make replacements on configurations
         createReplacementCommandsForStorage(replacementsOfConfigurationsForStorage, replacementCommandsForStorage)
 
-        currentStorageServer.devicesSelected.each { deviceSelected ->
-            prepareDeviceCommands << "$storageScriptsDirectory/prepareDevice.sh /dev/$deviceSelected /srv/node/$deviceSelected"
-        }
-
+        // Copy configuration files from installer directory to final location.
         copyCommandsForStorage << "cp $storageConfDirectory/rsyncd.conf /etc"
         copyCommandsForStorage << "cp $storageConfDirectory/account-server.conf $storageConfDirectory/container-server.conf $storageConfDirectory/object-server.conf /etc/swift"
         copyCommandsForStorage << "cp $installerDirectory/Configuration/swift.conf /etc/swift"
 
+        // Prepare devices with XFS filesystem
+        builCommandsForPrepareDevices(currentStorageServer, prepareDeviceCommands)
+
+        // Configure Rsync to start as a daemon.
         configureRsynForStartInDaemonModeCommand = "$storageScriptsDirectory/configureRsynForStartInDaemonMode.sh"
 
-        if (isCentralNode) {
-            currentStorageServer.devicesSelected.each { deviceSelected ->
-                createRingCommands << "$storageScriptsDirectory/createRings.sh ${currentStorageServer.remoteHost.ipAddress} ${deviceSelected} 6002 6001 6000"
-            }
-
-            storageServers.each { Map otherStorageServer ->
-                currentStorageServer.devicesSelected.each { deviceSelected ->
-                    "$storageScriptsDirectory/createRings.sh ${otherStorageServer.remoteHost.ipAddress} $deviceSelected 6002 6001 6000"
-                }
-            }
-        }
-
         changeOwnerPrivilegesCommand = "chown -R swift:swift /srv/node"
+    }
 
+    List getMandatoryCommandsForStorage() {
+        List commands = []
+        commands += installationCommandsForStorage
+        commands += replacementCommandsForStorage
+        commands += prepareDeviceCommands
+        commands += copyCommandsForStorage
+        commands += configureRsynForStartInDaemonModeCommand
+        commands += changeOwnerPrivilegesCommand
+        commands
+    }
 
-        if (thereAreManyNodesRunningSwiftProxy) {
-            serversWithSwiftProxy.each { serverWithSwiftProxy ->
-                sshCopyCommands << "scp -i $installerDirectory/.secretKeys/${serverWithSwiftProxy.name} -o StrictHostKeyChecking=no /etc/swift/*.ring.gz root@${serverWithSwiftProxy.ipAddress}:/etc/swift"
-                sshCopyCommands << "scp -i $installerDirectory/.secretKeys/${serverWithSwiftProxy.name} -o StrictHostKeyChecking=no /etc/swift/swift.conf root@${serverWithSwiftProxy.ipAddress}:/etc/swift"
+    private builCommandsForPrepareDevices(Map currentStorageServer, prepareDeviceCommands) {
+        currentStorageServer.devicesSelected.each { deviceSelected ->
+            String devicePath = "/dev/$deviceSelected"
+            String deviceMountpoint = "/srv/node/$deviceSelected"
+            prepareDeviceCommands << "$storageScriptsDirectory/prepareDevice.sh $devicePath $deviceMountpoint"
+        }
+    }
+
+    def initializeCommandsForCentralStorage(List<Map> storageNodes, List<Map> serversRunningSwiftProxy) {
+        ringSetupCommands = []
+        secureCopyCommands = []
+
+        ringSetupCommands << "$storageScriptsDirectory/createRing.sh /etc/swift/account.builder 10 1 1"
+        ringSetupCommands << "$storageScriptsDirectory/createRing.sh /etc/swift/container.builder 10 1 1"
+        ringSetupCommands << "$storageScriptsDirectory/createRing.sh /etc/swift/object.builder 10 1 1"
+
+        storageNodes.each { Map storageNode ->
+            storageNode.devicesSelected.each { deviceSelected ->
+                ringSetupCommands << "$storageScriptsDirectory/addElementToRing.sh /etc/swift/account.builder 1 1 ${storageNode.remoteHost.ipAddress} 6002 ${deviceSelected} 100"
+                ringSetupCommands << "$storageScriptsDirectory/addElementToRing.sh /etc/swift/container.builder 1 1 ${storageNode.remoteHost.ipAddress} 6001 ${deviceSelected} 100"
+                ringSetupCommands << "$storageScriptsDirectory/addElementToRing.sh /etc/swift/object.builder 1 1 ${storageNode.remoteHost.ipAddress} 6000 ${deviceSelected} 100"
             }
         }
-        swifInitStartCommands = "bash -c \"swift-init all start\""
 
+        // Rebalance rings
+        ringSetupCommands << "$storageScriptsDirectory/rebalanceRing.sh /etc/swift/account.builder"
+        ringSetupCommands << "$storageScriptsDirectory/rebalanceRing.sh /etc/swift/container.builder"
+        ringSetupCommands << "$storageScriptsDirectory/rebalanceRing.sh /etc/swift/object.builder"
+
+
+        if (!serversRunningSwiftProxy.empty) {
+            secureCopyCommands = buildCommandsForSecureCopy(serversRunningSwiftProxy)
+        }
+
+    }
+
+    List buildCommandsForSecureCopy(List<Map> serverDestinations) {
+        List commands = []
+
+        serverDestinations.each { Map destination ->
+            String ipAddress = destination.remoteHost.ipAddress
+            String sshKeyPath = "$installerDirectory/.secretKeys/${ipAddress.replace(".", "@")}"
+            commands << "scp -i ${sshKeyPath} -o StrictHostKeyChecking=no /etc/swift/*.ring.gz /etc/swift/swift.conf root@${ipAddress}:/etc/swift"
+        }
+
+        commands
+    }
+
+    List getCommandsForCentralStorage() {
+        List commands = []
+        commands += ringSetupCommands
+        commands += secureCopyCommands
+        commands
+    }
+
+    def initializeCommandsForFinishStorageInstallation() {
+
+        swifInitStartCommands = "bash -c \"swift-init all start\""
         restartMemcachedServiceCommand = "service memcached restart"
         restartSwiftProxyServiceCommand = "service swift-proxy start"
 
         notificateToTelegramBotAboutStorageCommand = "$installerDirectory/Scripts/notificateToTelegram.sh ${getTelegramKey()} ${getTelegramBotId()} \"Storage Server\""
+    }
+
+    List getCommandsForFinishStorageInstallation() {
+        List commands = []
+        commands += swifInitStartCommands
+        commands += restartMemcachedServiceCommand
+        //commands += restartSwiftProxyServiceCommand
+        commands += notificateToTelegramBotAboutStorageCommand
+        commands
     }
 
     private createReplacementCommandsForAuthentication(List<Map> configurationForAuthentication) {
@@ -180,45 +248,6 @@ class CommandInitializator {
             }
             replacementCommandsForStorage << "$installerDirectory/Scripts/replaceValue.sh $replacement.pattern $replacement.replacement \"$files\""
         }
-    }
-
-
-    List buildCommandsForAuthentication() {
-        List commandsForAuthentication = []
-
-        commandsForAuthentication += installationCommands
-        commandsForAuthentication += replacementCommands
-        commandsForAuthentication += copyCommands
-        commandsForAuthentication += restartDatabaseServiceCommand
-        commandsForAuthentication += setupKeystoneDatabaseCommands
-        commandsForAuthentication += configureWSGICommand
-        commandsForAuthentication += restartHTTPServerCommand
-        commandsForAuthentication += populateKeystoneDatabaseCommands
-        commandsForAuthentication += restartMemcachedServiceCommand
-        commandsForAuthentication += notificateToTelegramBotCommand
-
-        commandsForAuthentication
-
-    }
-
-    List buildCommandsForStorage() {
-        List commandsForStorage = []
-
-        commandsForStorage += installationCommandsForStorage
-        commandsForStorage += replacementCommandsForStorage
-        commandsForStorage += prepareDeviceCommands
-        commandsForStorage += copyCommandsForStorage
-        commandsForStorage += configureRsynForStartInDaemonModeCommand
-        commandsForStorage += createRingCommands
-        commandsForStorage += changeOwnerPrivilegesCommand
-        commandsForStorage += sshCopyCommands
-        commandsForStorage += swifInitStartCommands
-        commandsForStorage += restartMemcachedServiceCommand
-        //commandsForStorage += restartSwiftProxyServiceCommand
-        commandsForStorage += notificateToTelegramBotAboutStorageCommand
-
-        commandsForStorage
-
     }
 
     String getTelegramKey() {
