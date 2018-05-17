@@ -23,6 +23,7 @@ import javafx.stage.FileChooser
 import mx.core.InstallerProcess
 import mx.core.NodeTypes
 import mx.core.ProcessType
+import mx.core.ProgressProperty
 import mx.gui.UiTracker
 import mx.retriever.BlockDevice
 import mx.retriever.RemoteHost
@@ -52,7 +53,7 @@ class NavigationController {
             --uiTracker.currentStep
         }
 
-        // Setting param values
+        // Setting data necessary for load disks, by changeMiddlePane method.
         if (uiTracker.currentStep == 3) {
             Set serverNames = uiTracker.serverData.keySet()
             serverNames.each {
@@ -66,41 +67,45 @@ class NavigationController {
                 serverDataMap.remoteUser = remoteUser
                 serverDataMap.remoteHost = remoteHost
             }
-        } else if (uiTracker.currentStep == 4) {
-            uiTracker.staticUiComponents.middlePane.children.clear()
-            String params = uiTracker.serverData
-            uiTracker.staticUiComponents.middlePane.children.add(new Label(params))
-            println params
-
-
-            InstallerProcess installerProcess = new InstallerProcess()
-            if ("allInOne" in uiTracker.serverData.keySet()) {
-                installerProcess.processType = ProcessType.ALL_IN_ONE
-            } else {
-                installerProcess.processType = ProcessType.DIVIDED
-            }
-
-
-            if (installerProcess.isAllInOneProcessType()) {
-                Map authenticationNode = uiTracker.serverData.allInOne
-                authenticationNode.types = [NodeTypes.ALL_IN_ONE, NodeTypes.CENTRAL_NODE_STORAGE, NodeTypes.AUTHENTICATION]
-                installerProcess.installOpenStackSwift(authenticationNode, authenticationNode, [])
-            } else if (installerProcess.isDividedProcessType()) {
-                Map authenticationNode = uiTracker.serverData.authentication
-                authenticationNode.types = [NodeTypes.AUTHENTICATION]
-
-                Map storageNode = uiTracker.serverData.centralStorage
-                storageNode.types = [NodeTypes.CENTRAL_NODE_STORAGE]
-
-                installerProcess.installOpenStackSwift(authenticationNode, storageNode, [])
-            }
-
-            // TODO Delete println
-            println "Start installation"
         }
 
+        // Change ui for bottom and middle panes.
         changeMiddlePane(uiTracker)
         changeTopPane(uiTracker)
+
+        // Perform installation
+        InstallerProcess installerProcess = new InstallerProcess()
+        if ("allInOne" in uiTracker.serverData.keySet()) {
+            installerProcess.processType = ProcessType.ALL_IN_ONE
+        } else {
+            installerProcess.processType = ProcessType.DIVIDED
+        }
+
+        if (uiTracker.currentStep == 4) {
+            try {
+                Thread.start {
+                    if (installerProcess.isAllInOneProcessType()) {
+                        Map authenticationNode = uiTracker.serverData.allInOne
+                        authenticationNode.types = [NodeTypes.ALL_IN_ONE, NodeTypes.CENTRAL_NODE_STORAGE, NodeTypes.AUTHENTICATION]
+
+                        /*HBox progressComponent = uiTracker.serverData.allInOne.progressUiComponent
+                        ProgressBar progressBar = progressComponent.children[2]*/
+
+                        installerProcess.installOpenStackSwift(authenticationNode, authenticationNode, [])
+                    } else if (installerProcess.isDividedProcessType()) {
+                        Map authenticationNode = uiTracker.serverData.authentication
+                        authenticationNode.types = [NodeTypes.AUTHENTICATION]
+
+                        Map storageNode = uiTracker.serverData.centralStorage
+                        storageNode.types = [NodeTypes.CENTRAL_NODE_STORAGE]
+
+                        installerProcess.installOpenStackSwift(authenticationNode, storageNode, [])
+                    }
+                }
+            } catch (Exception e) {
+                println e
+            }
+        }
     }
 
     private changeTopPane(UiTracker uiTracker) {
@@ -136,7 +141,31 @@ class NavigationController {
         } else if (uiTracker.currentStep == 3) {
             // Get block devices
             loadBlockDevice(uiTracker)
+        } else if (uiTracker.currentStep == 4) {
+            loadProgressComponents(uiTracker)
         }
+    }
+
+    void loadProgressComponents(UiTracker uiTracker) {
+        Set serverNames = uiTracker.serverData.keySet()
+        VBox column = new VBox()
+
+        serverNames.each {
+            Map serverDataMap = uiTracker.serverData["$it"] as Map
+
+            HBox progressComponent = (HBox) serverDataMap.progressUiComponent
+
+            Label label = progressComponent.children.first() as Label
+            label.text = "Server ${serverDataMap.remoteHost.ipAddress}"
+            column.children.add(progressComponent)
+
+            ProgressBar progressBar = progressComponent.children[1]
+            ProgressIndicator progressIndicator = progressComponent.children.last()
+            progressBar.progressProperty().bind(serverDataMap.progress as ProgressProperty)
+            progressIndicator.progressProperty().bind(serverDataMap.progress as ProgressProperty)
+
+        }
+        uiTracker.staticUiComponents.middlePane.children.add(column)
     }
 
     private loadContentForServerData(UiTracker uiTracker) {
@@ -150,7 +179,13 @@ class NavigationController {
         if (singleNode.selected) {
             HBox uniqueServerDataUIComponent = uiTracker.loadServerDataUIForm()
             uniqueServerDataUIComponent.id = "allInOne"
-            uiTracker.serverData.allInOne = [uiComponent: uniqueServerDataUIComponent]
+
+            HBox allInOneProgressUiComponent = uiTracker.loadProgressComponent()
+            allInOneProgressUiComponent.id = "authentication"
+
+            ProgressProperty progressProperty = new ProgressProperty()
+
+            uiTracker.serverData.allInOne = [uiComponent: uniqueServerDataUIComponent, progressUiComponent: allInOneProgressUiComponent, progress: new ProgressProperty()]
             column.children.add(uniqueServerDataUIComponent)
             addListenerToAll(uiTracker, uniqueServerDataUIComponent)
         } else if (twoNodes.selected) {
@@ -159,8 +194,13 @@ class NavigationController {
             HBox centralStorageServerDataUIComponent = uiTracker.loadServerDataUIForm()
             centralStorageServerDataUIComponent.id = "centralStorage"
 
-            uiTracker.serverData.authentication = [uiComponent: authenticationServerDataUIComponent]
-            uiTracker.serverData.centralStorage = [uiComponent: centralStorageServerDataUIComponent]
+            HBox authenticationServerProgressUiComponent = uiTracker.loadProgressComponent()
+            authenticationServerProgressUiComponent.id = "authentication"
+            HBox centralStorageServerProgressUiComponent = uiTracker.loadProgressComponent()
+            centralStorageServerProgressUiComponent.id = "centralStorage"
+
+            uiTracker.serverData.authentication = [uiComponent: authenticationServerDataUIComponent, progressUiComponent: authenticationServerProgressUiComponent, progress: new ProgressProperty()]
+            uiTracker.serverData.centralStorage = [uiComponent: centralStorageServerDataUIComponent, progressUiComponent: centralStorageServerProgressUiComponent, progress: new ProgressProperty()]
             addListenerToAll(uiTracker, authenticationServerDataUIComponent, centralStorageServerDataUIComponent)
 
             column.children.addAll(authenticationServerDataUIComponent, centralStorageServerDataUIComponent)
