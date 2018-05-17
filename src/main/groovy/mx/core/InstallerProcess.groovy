@@ -26,8 +26,7 @@ class InstallerProcess {
         if (isUndefinedProcessType())
             throw new Exception("Process type on Installer Process can't be undefined.")
 
-        Remote authenticationRemote = buildRemoteFrom(authenticationNode.remoteUser as RemoteUser, authenticationNode.remoteHost as RemoteHost)
-        installKeystone(authenticationRemote)
+        installKeystone(authenticationNode)
 
         if (isDividedProcessType()) {
             // Copy keys to centralNode
@@ -38,10 +37,10 @@ class InstallerProcess {
         installSwiftIntoCentralNode(centralStorageNode, storageNodes, authenticationNode)
 
         /**(storageNodes + centralStorageNode).each { Map storageNode ->
-            installSwift(storageNode, storageNodes, [])
-        }*/
+         installSwift(storageNode, storageNodes, [])}*/
 
         if (this.isDividedProcessType()) {
+            Remote authenticationRemote = buildRemoteFrom(authenticationNode.remoteUser as RemoteUser, authenticationNode.remoteHost as RemoteHost)
             startSwiftProxyServiceOnNode(authenticationRemote)
         }
     }
@@ -76,7 +75,12 @@ class InstallerProcess {
 
         List commands = mandatoryCommands + centralNodeCommands + commandsForStartStorageServiceOnNode
 
-        executeCommandsIntoRemote(storageRemote, commandInitializator, commands)
+        ProgressProperty progressPropertyForCentralStorageNode = centralStorageNode.progress as ProgressProperty
+        if (isAllInOneProcessType()) {
+            progressPropertyForCentralStorageNode.stepsExecuted = 0
+        }
+        progressPropertyForCentralStorageNode.totalSteps = commands.size() as Double
+        executeCommandsIntoRemote(storageRemote, commandInitializator, commands, progressPropertyForCentralStorageNode)
     }
 
     /*void installSwift(Map storageNode, List<Map> extraStorageNodes, List<Map> serversWithSwiftProxy) {
@@ -111,14 +115,17 @@ class InstallerProcess {
      * Install an Authentication Service based on Opestack Keystone.
      * @Param Remote An object that represent the server where Keystone gonna be installed.     *
      * */
-    void installKeystone(Remote remote) {
+    void installKeystone(Map authenticationNode) {
+        Remote remote = buildRemoteFrom(authenticationNode.remoteUser as RemoteUser, authenticationNode.remoteHost as RemoteHost)
         List replacementsForAuthentication = getConfigurationForAuthentication(remote.host)
         CommandInitializator commandInitializator = new CommandInitializator()
         commandInitializator.initializeCommandsForAuthentication(replacementsForAuthentication)
         List commands = commandInitializator.buildCommandsForAuthentication()
 
 
-        executeCommandsIntoRemote(remote, commandInitializator, commands)
+        ProgressProperty progressPropertyForAuthenticationNode = authenticationNode.progress as ProgressProperty
+        progressPropertyForAuthenticationNode.totalSteps = commands.size() as Double
+        executeCommandsIntoRemote(remote, commandInitializator, commands, progressPropertyForAuthenticationNode)
     }
 
     /**
@@ -126,7 +133,7 @@ class InstallerProcess {
      * @Param remote It's the server where Keystone gonna be installed.
      * @Pram commandInitializator An object the include the data for build commands related with replacements over configuration files.
      * */
-    private executeCommandsIntoRemote(Remote remote, CommandInitializator commandInitializator, List<String> commands) {
+    private executeCommandsIntoRemote(Remote remote, CommandInitializator commandInitializator, List<String> commands, ProgressProperty progress) {
         Service authenticationService = Ssh.newService()
         authenticationService.runInOrder {
             session(remote) {
@@ -140,6 +147,7 @@ class InstallerProcess {
                     String output = ""
                     try {
                         output = execute "$it"
+                        progress.addStepExecuted()
                     } catch (BadExitStatusException badExitStatusException) {
                         println badExitStatusException.message
                         println badExitStatusException.exitStatus
