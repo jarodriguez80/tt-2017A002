@@ -1,6 +1,9 @@
 package mx.core
 
 class CommandInitializator {
+    Boolean excludeConfigurationCommands = false
+    Boolean excludeInitializationCommands = false
+    Boolean excludeInstallationCommands = false
 
     String installerDirectory = "/installer_files"
     String authenticationConfDirectory = "$installerDirectory/Configuration/Authentication"
@@ -36,6 +39,10 @@ class CommandInitializator {
     List ringSetupCommands = []
     List secureCopyCommands = []
 
+    private Boolean includeOnlyInstallation() {
+        (excludeInstallationCommands == true) && (excludeConfigurationCommands == false) && (excludeInitializationCommands == false)
+    }
+
     void initializeCommandsForAuthentication(List<Map> configurationForAuthentication) {
 
         // Add repositories
@@ -67,6 +74,8 @@ class CommandInitializator {
         copyCommands << "cp $authenticationConfDirectory/memcached.conf /etc/"
         restartDatabaseServiceCommand = "service mysql restart"
 
+
+
         setupKeystoneDatabaseCommands << "mysql < $installerDirectory/keystoneDatabase.sql -uroot -proot"
         setupKeystoneDatabaseCommands << "$authenticationScriptsDirectory/populateDatabase.sh"
         setupKeystoneDatabaseCommands << "$authenticationScriptsDirectory/initializeFernetKeys.sh"
@@ -91,16 +100,22 @@ class CommandInitializator {
     List buildCommandsForAuthentication() {
         List commandsForAuthentication = []
 
-        commandsForAuthentication += installationCommands
-        commandsForAuthentication += replacementCommands
-        commandsForAuthentication += copyCommands
-        commandsForAuthentication += restartDatabaseServiceCommand
-        commandsForAuthentication += setupKeystoneDatabaseCommands
-        commandsForAuthentication += configureWSGICommand
-        commandsForAuthentication += restartHTTPServerCommand
-        commandsForAuthentication += populateKeystoneDatabaseCommands
-        commandsForAuthentication += restartMemcachedServiceCommand
-        commandsForAuthentication += notificateToTelegramBotCommand
+        if (!excludeInstallationCommands) {
+            commandsForAuthentication += installationCommands
+        }
+        if (!excludeConfigurationCommands) {
+            commandsForAuthentication += replacementCommands
+            commandsForAuthentication += copyCommands
+        }
+        if (!excludeInitializationCommands) {
+            commandsForAuthentication += restartDatabaseServiceCommand
+            commandsForAuthentication += setupKeystoneDatabaseCommands
+            commandsForAuthentication += configureWSGICommand
+            commandsForAuthentication += restartHTTPServerCommand
+            commandsForAuthentication += populateKeystoneDatabaseCommands
+            commandsForAuthentication += restartMemcachedServiceCommand
+            commandsForAuthentication += notificateToTelegramBotCommand
+        }
 
         commandsForAuthentication
 
@@ -140,12 +155,18 @@ class CommandInitializator {
 
     List getMandatoryCommandsForStorage() {
         List commands = []
-        commands += installationCommandsForStorage
-        commands += replacementCommandsForStorage
-        commands += prepareDeviceCommands
-        commands += copyCommandsForStorage
-        commands += configureRsynForStartInDaemonModeCommand
-        commands += changeOwnerPrivilegesCommand
+        if (!excludeInstallationCommands) {
+            commands += installationCommandsForStorage
+        }
+        if (!excludeConfigurationCommands) {
+            commands += replacementCommandsForStorage
+            commands += copyCommandsForStorage
+            commands += configureRsynForStartInDaemonModeCommand
+        }
+        if (!excludeInitializationCommands) {
+            commands += prepareDeviceCommands
+            commands += changeOwnerPrivilegesCommand
+        }
         commands
     }
 
@@ -199,8 +220,10 @@ class CommandInitializator {
 
     List getCommandsForCentralStorage() {
         List commands = []
-        commands += ringSetupCommands
-        commands += secureCopyCommands
+        if (!excludeInitializationCommands) {
+            commands += ringSetupCommands
+            commands += secureCopyCommands
+        }
         commands
     }
 
@@ -215,10 +238,11 @@ class CommandInitializator {
 
     List getCommandsForFinishStorageInstallation() {
         List commands = []
-        commands += swifInitStartCommands
-        commands += restartMemcachedServiceCommand
-        //commands += restartSwiftProxyServiceCommand
-        commands += notificateToTelegramBotAboutStorageCommand
+        if (!excludeInitializationCommands) {
+            commands += swifInitStartCommands
+            commands += restartMemcachedServiceCommand
+            commands += notificateToTelegramBotAboutStorageCommand
+        }
         commands
     }
 
