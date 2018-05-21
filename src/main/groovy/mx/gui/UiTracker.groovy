@@ -33,4 +33,8 @@ class UiTracker {
     AnchorPane loadDisUIComponent() {
         return FXMLLoader.load(this.class.classLoader.getResource("fxml/diskUI.fxml"))
     }
+
+    HBox loadProgressComponent() {
+        return FXMLLoader.load(this.class.classLoader.getResource("fxml/progresBarUIComponent.fxml"))
+    }
 }
