@@ -227,10 +227,9 @@ class CommandInitializator {
         commands
     }
 
-    def initializeCommandsForFinishStorageInstallation() {
+    def initializeCommandsForFinishInstallationOnStorage() {
 
         swifInitStartCommands = "bash -c \"swift-init all start\""
-        restartMemcachedServiceCommand = "service memcached restart"
         restartSwiftProxyServiceCommand = "service swift-proxy start"
 
         notificateToTelegramBotAboutStorageCommand = "$installerDirectory/Scripts/notificateToTelegram.sh ${getTelegramKey()} ${getTelegramBotId()} \"Storage Server\""
@@ -240,7 +239,6 @@ class CommandInitializator {
         List commands = []
         if (!excludeInitializationCommands) {
             commands += swifInitStartCommands
-            commands += restartMemcachedServiceCommand
             commands += notificateToTelegramBotAboutStorageCommand
         }
         commands
