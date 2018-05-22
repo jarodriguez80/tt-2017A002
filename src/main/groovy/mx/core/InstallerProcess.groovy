@@ -84,12 +84,17 @@ class InstallerProcess {
 
         // Get commands to be executed by the central node like ring creation and additions, and secure copy.
 
-        commandInitializator.initializeCommandsForCentralStorage(storageNodes + centralStorageNode, storageNodes + authenticationNode)
+        if (isAllInOneProcessType()) {
+            commandInitializator.initializeCommandsForCentralStorage(storageNodes + centralStorageNode, [])
+        } else if (isDividedProcessType()) {
+            commandInitializator.initializeCommandsForCentralStorage(storageNodes + centralStorageNode, storageNodes + authenticationNode)
+        }
+
         List centralNodeCommands = commandInitializator.getCommandsForCentralStorage()
 
         // TODO Refactor this when the installation try to be used on more that two nodes. Due to te finish installation require that centralStorageNode has files generated on central node (of storage). I suggeste get this stpe out of this method and execute after installSwiftProxy in another method called finish installation on storage nodes.
 
-        commandInitializator.initializeCommandsForFinishStorageInstallation()
+        commandInitializator.initializeCommandsForFinishInstallationOnStorage()
         List commandsForStartStorageServiceOnNode = commandInitializator.getCommandsForFinishStorageInstallation()
 
         List commands = mandatoryCommands + centralNodeCommands + commandsForStartStorageServiceOnNode
