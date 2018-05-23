@@ -271,7 +271,7 @@ class NavigationController {
             devices.each { blockDevice ->
 
                 // Create and fill Device Button
-                AnchorPane wrapper = uiTracker.loadDisUIComponent()
+                AnchorPane wrapper = uiTracker.loadDiskUIComponent()
                 HBox hwrapper = wrapper.children.first()
                 VBox vwrapper = hwrapper.children.last()
 

@@ -2,10 +2,21 @@ package mx.retriever
 
 import groovy.transform.ToString
 
+/**
+ * This class represent a Block Device, returned by the execution of lsblk command.
+ *
+ * */
+
 @ToString(includeNames = true)
 class BlockDevice {
     /**
-     * name="sda" type="disk" mountpoint="" fstype="" size="10g"
+     * Fields
+     * name         : The name of the Block Device as sda, sdb, sdc, etc ...
+     * type         : The type of the Block Device as disk or partition
+     * mountpoint   : Where the Block Device is mounted.
+     * fstype       : The filesystem in the Block Device
+     * size         : The capacity of the Block Device
+     * storageUnit  : The unity related to the Block Device's size.
      * */
 
     String name
@@ -28,6 +39,9 @@ class BlockDevice {
     `   """.toString()
     }
 
+    /**
+     * Check if the mount point of device is defined, if it isn't then return a "Not Mounted" value
+     * */
     String getMountpoint() {
         if (this.mountpoint == "\"\"") {
             return "N/M"

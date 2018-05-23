@@ -6,12 +6,25 @@ import org.hidetake.groovy.ssh.core.Service
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
+/**
+ * This helper is used for retrieve Block Devices data from a remote server.
+ *
+ * */
+
 class TaskHelper {
 
     Service sshService
     static String host
     static String user
     static int port
+
+    /**
+     * Retrieve Block Devices from a remote host.
+     *
+     * @param remoteHost The server where the disk will be retrieved.
+     * @param remoteUser The user need it for access.
+     * @return A list with de Block Devices available.
+     * */
 
     List<BlockDevice> getBlocksFromRemoteHost(RemoteHost remoteHost, RemoteUser remoteUser) {
         List<BlockDevice> devices = []
@@ -48,6 +61,15 @@ class TaskHelper {
 
     final String NAME_FOR_HARD_DRIVES = "sd"
     final List RESTRICTED_MOUNTPOINTS = ["/"]
+    /**
+     * Parse the lsblk output command to a list of BlockDevice. A sample of the lsblkOutput will be:
+     *
+     *          NAME="sda" TYPE="disk" MOUNTPOINT="" FSTYPE="" SIZE="10G"
+     *          NAME="sda1" TYPE="part" MOUNTPOINT="/" FSTYPE="ext4" SIZE="5.4G"
+     *
+     * @param lsblkOutput The output received from lsblk command execution.
+     * @return A representation of the lsblk's output as a list of BlockDevice.
+     * */
 
     List<BlockDevice> parseLsblkOutput(String lsblkOutput) {
         List blockDevices = []
@@ -74,6 +96,12 @@ class TaskHelper {
         blockDevices
     }
 
+    /**
+     * Provide extra filters that lsblk command can't.
+     *
+     * @param line The device provided by lsblk command.
+     * @return true if the line belong to a valid device.
+     * */
     private isValidOutput(String line) {
         boolean isAHardrive = (line =~ "NAME=\"$NAME_FOR_HARD_DRIVES").find()
         boolean isMountedInRestrictedMountPoints = false
@@ -90,13 +118,19 @@ class TaskHelper {
 
     final Pattern pattern = Pattern.compile("\"(\\d+(\\.\\d+)?)(\\w)\"")
 
-    void parseSize(def map, String sizeString) {
+    /**
+     * Parse Block Device's size
+     *
+     * @param capacityProperties An empty map for be filled with the size and storage unit.
+     * @param sizeString Contains the capacity of a Block Device, it's used for parse by quantity and unit storage.
+     * */
+
+    void parseSize(Map capacityProperties, String sizeString) {
         Matcher matcher = pattern.matcher(sizeString)
 
         if (matcher.matches()) {
-            map << ["size": matcher.group(1) as Double]
-            map << ["storageUnit": matcher.group(3)]
+            capacityProperties << ["size": matcher.group(1) as Double]
+            capacityProperties << ["storageUnit": matcher.group(3)]
         }
     }
 }
-
