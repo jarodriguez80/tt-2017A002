@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.text.*?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import java.lang.*?>
@@ -10,8 +11,27 @@
       <AnchorPane fx:id="topPanel" layoutX="14.0" layoutY="14.0" prefHeight="131.0" prefWidth="774.0" styleClass="top-panel" stylesheets="@css/panels.css" AnchorPane.leftAnchor="13.0" AnchorPane.rightAnchor="13.0">
          <opaqueInsets>
             <Insets />
-         </opaqueInsets></AnchorPane>
-      <AnchorPane fx:id="middlePanel" layoutX="14.0" layoutY="160.0" prefHeight="345.0" prefWidth="774.0" styleClass="middle-panel" stylesheets="@css/panels.css" AnchorPane.leftAnchor="13.0" AnchorPane.rightAnchor="13.0" />
+         </opaqueInsets>
+         <children>
+            <Label layoutX="360.0" layoutY="48.0" text="Welcome to OpenStack Swift Installer">
+               <font>
+                  <Font size="19.0" />
+               </font>
+            </Label>
+         </children></AnchorPane>
+      <AnchorPane fx:id="middlePanel" layoutX="14.0" layoutY="160.0" prefHeight="345.0" prefWidth="774.0" styleClass="middle-panel" stylesheets="@css/panels.css" AnchorPane.leftAnchor="13.0" AnchorPane.rightAnchor="13.0">
+         <children>
+            <Label layoutX="20.0" layoutY="126.0" prefHeight="131.0" prefWidth="693.0" text="It's a tool for install, configure and initialize the OpenStack Object Store project, known as Swift, which offers cloud storage software so that you can store and retrieve lots of data with a simple API. The process it's based on the process documented on OpenStack Installation Guide for Ubuntu (https://docs.openstack.org/mitaka/install-guide-ubuntu/)." wrapText="true">
+               <font>
+                  <Font size="15.0" />
+               </font>
+            </Label>
+            <Label layoutX="20.0" layoutY="88.0" prefHeight="44.0" prefWidth="321.0" text="What is OpenStack Swift Installer?">
+               <font>
+                  <Font size="18.0" />
+               </font>
+            </Label>
+         </children></AnchorPane>
       <AnchorPane fx:id="bottomPanel" layoutX="14.0" layoutY="518.0" prefHeight="68.0" prefWidth="773.0" styleClass="bottom-panel" stylesheets="@css/panels.css" AnchorPane.bottomAnchor="13.0" AnchorPane.leftAnchor="13.0" AnchorPane.rightAnchor="13.0">
          <children>
             <Button fx:id="nextButton" layoutX="515.0" layoutY="14.0" mnemonicParsing="false" onMouseClicked="#changeContent" prefHeight="44.0" prefWidth="194.0" text="Next" />
