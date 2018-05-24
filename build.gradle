@@ -1,9 +1,13 @@
 version '1.0-SNAPSHOT'
 
+ext {
+    jre_path = '/home/jorge/.sdkman/candidates/java/8u161-oracle/jre'
+    distributionName = 'Object Storage Wizard'
+}
+
 apply plugin: 'groovy'
-// For make application runnable
 apply plugin: 'application'
-//mainClassName = 'InstallerProcess'
+
 mainClassName = 'mx.gui.InstallerGUI'
 
 repositories {
@@ -20,3 +24,14 @@ dependencies {
     compile group: 'org.slf4j', name: 'slf4j-nop', version: '1.7.7'
 }
 
+
+distributions {
+    main {
+        baseName = distributionName
+    }
+}
+
+task buildExecutable(type: Copy) {
+    from jre_path
+    into "${buildDir}/install/${distributionName}/jre"
+}
