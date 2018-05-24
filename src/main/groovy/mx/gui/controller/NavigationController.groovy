@@ -1,7 +1,5 @@
 package mx.gui.controller
 
-import javafx.beans.property.DoubleProperty
-import javafx.beans.property.SimpleDoubleProperty
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.scene.control.Button
@@ -31,14 +29,6 @@ import mx.retriever.RemoteUser
 import mx.retriever.TaskHelper
 
 class NavigationController {
-
-    @FXML
-    ProgressBar progressBarForAuthentication, progressBarForStorageOne
-    @FXML
-    ProgressIndicator progressIndicatorForAuthentication, progressIndicatorForStorageOne
-    DoubleProperty authenticationProgressProperty = new SimpleDoubleProperty(0.0), storageProgressProperty = new SimpleDoubleProperty(0.0)
-
-    // Cleaning after this comment
 
     @FXML
     protected void changeContent(MouseEvent event) {
@@ -108,7 +98,7 @@ class NavigationController {
         }
     }
 
-    private changeTopPane(UiTracker uiTracker) {
+    private void changeTopPane(UiTracker uiTracker) {
         if (uiTracker.currentStep == 0) {
             uiTracker.staticUiComponents.topPane.children.clear()
         } else if (uiTracker.currentStep in [1, 2, 3, 4]) {
@@ -130,7 +120,7 @@ class NavigationController {
         }
     }
 
-    private changeMiddlePane(UiTracker uiTracker) {
+    private void changeMiddlePane(UiTracker uiTracker) {
         uiTracker.staticUiComponents.middlePane.children.clear()
 
         if (uiTracker.currentStep == 1) {

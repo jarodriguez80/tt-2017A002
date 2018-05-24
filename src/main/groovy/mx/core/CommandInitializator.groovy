@@ -11,13 +11,11 @@ class CommandInitializator {
     String storageConfDirectory = "$installerDirectory/Configuration/Storage"
     String storageScriptsDirectory = "$installerDirectory/Scripts/Storage"
 
-    def commandsForAuthentication = []
     List installationCommands = []
     List replacementCommands = []
     List copyCommands = []
     List setupKeystoneDatabaseCommands = []
     List populateKeystoneDatabaseCommands = []
-    List exportEnvironmentVariablesCommands = []
 
     String restartDatabaseServiceCommand = ""
     String configureWSGICommand = ""
@@ -39,10 +37,6 @@ class CommandInitializator {
     List ringSetupCommands = []
     List secureCopyCommands = []
 
-    private Boolean includeOnlyInstallation() {
-        (excludeInstallationCommands == true) && (excludeConfigurationCommands == false) && (excludeInitializationCommands == false)
-    }
-
     void initializeCommandsForAuthentication(List<Map> configurationForAuthentication) {
 
         // Add repositories
@@ -55,17 +49,6 @@ class CommandInitializator {
 
         // Make replacements on configurations
         createReplacementCommandsForAuthentication(configurationForAuthentication)
-
-        // Copy openstack.cnf to /etc/mysql/conf.d/openstack.cnf
-        // Copy keystone configuration to /etc/keystone/
-        // Copy proxy configuration to /etc/swift/
-        // Copy Apache WSGI configuration to /etc/apache2/sites-available/wsgi-keystone.conf
-        // Create database for Keystone
-        // Populate database
-        // Initialize Fernets
-
-        // Link apache configuration
-        // Execute Initialization
 
         copyCommands << "cp $authenticationConfDirectory/openstack.cnf /etc/mysql/conf.d/"
         copyCommands << "cp $authenticationConfDirectory/keystone.conf /etc/keystone/"
@@ -121,8 +104,8 @@ class CommandInitializator {
 
     }
 
-    def initializeMandatoryCommandsForStorage(List<Map> replacementsOfConfigurationsForStorage,
-                                              Map currentStorageServer) {
+    void initializeMandatoryCommandsForStorage(List<Map> replacementsOfConfigurationsForStorage,
+                                               Map currentStorageServer) {
         installationCommandsForStorage = []
         replacementCommandsForStorage = []
         prepareDeviceCommands = []
@@ -170,7 +153,7 @@ class CommandInitializator {
         commands
     }
 
-    private builCommandsForPrepareDevices(Map currentStorageServer, prepareDeviceCommands) {
+    private void builCommandsForPrepareDevices(Map currentStorageServer, List prepareDeviceCommands) {
         currentStorageServer.devicesSelected.each { deviceSelected ->
             String devicePath = "/dev/$deviceSelected"
             String deviceMountpoint = "/srv/node/$deviceSelected"
@@ -178,7 +161,7 @@ class CommandInitializator {
         }
     }
 
-    def initializeCommandsForCentralStorage(List<Map> storageNodes, List<Map> serversRunningSwiftProxy) {
+    void initializeCommandsForCentralStorage(List<Map> storageNodes, List<Map> serversRunningSwiftProxy) {
         ringSetupCommands = []
         secureCopyCommands = []
 
@@ -227,7 +210,7 @@ class CommandInitializator {
         commands
     }
 
-    def initializeCommandsForFinishInstallationOnStorage() {
+    void initializeCommandsForFinishInstallationOnStorage() {
 
         swifInitStartCommands = "bash -c \"swift-init all start\""
         restartSwiftProxyServiceCommand = "service swift-proxy start"
@@ -244,7 +227,7 @@ class CommandInitializator {
         commands
     }
 
-    private createReplacementCommandsForAuthentication(List<Map> configurationForAuthentication) {
+    private void createReplacementCommandsForAuthentication(List<Map> configurationForAuthentication) {
         configurationForAuthentication.each { replacement ->
             String files = ""
             replacement.filesToBeReplaced.each { file ->
@@ -262,7 +245,7 @@ class CommandInitializator {
         }
     }
 
-    private createReplacementCommandsForStorage(List<Map> replacementsOfConfigurationsForStorage, replacementCommandsForStorage) {
+    private void createReplacementCommandsForStorage(List<Map> replacementsOfConfigurationsForStorage, List replacementCommandsForStorage) {
         replacementsOfConfigurationsForStorage.each { replacement ->
             String files = ""
             replacement.filesToBeReplaced.each { file ->
@@ -272,11 +255,11 @@ class CommandInitializator {
         }
     }
 
-    String getTelegramKey() {
+    private String getTelegramKey() {
         new File("src/resources/telegramKey").text
     }
 
-    String getTelegramBotId() {
+    private String getTelegramBotId() {
         new File("src/resources/telegramBotId").text
     }
 }

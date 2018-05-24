@@ -16,7 +16,6 @@ class UiTracker {
     Map staticUiComponents = [:]
     Map customUiComponents = [:]
     Integer currentStep = 0
-    Map servers = [:]
     Map serverData = [:]
 
     /**

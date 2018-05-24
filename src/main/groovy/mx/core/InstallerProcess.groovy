@@ -138,7 +138,7 @@ class InstallerProcess {
      * @Paran commands The commandds to be executed.
      * @Paran progress The execution progrss for the commands.
      * */
-    private executeCommandsIntoRemote(Remote remote, CommandInitializator commandInitializator, List<String> commands, ProgressProperty progress) {
+    private void executeCommandsIntoRemote(Remote remote, CommandInitializator commandInitializator, List<String> commands, ProgressProperty progress) {
         Service authenticationService = Ssh.newService()
         authenticationService.runInOrder {
             session(remote) {

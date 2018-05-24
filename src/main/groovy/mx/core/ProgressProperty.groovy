@@ -3,8 +3,8 @@ package mx.core
 import javafx.beans.property.SimpleDoubleProperty
 
 class ProgressProperty extends SimpleDoubleProperty {
-    Double stepsExecuted = 0
-    Double totalSteps
+    private Double stepsExecuted = 0
+    private Double totalSteps
 
     void addStepExecuted(double stepsAdded = 1) {
         this.stepsExecuted += stepsAdded
