@@ -139,8 +139,8 @@ class InstallerProcess {
      * @Paran progress The execution progrss for the commands.
      * */
     private void executeCommandsIntoRemote(Remote remote, CommandInitializator commandInitializator, List<String> commands, ProgressProperty progress) {
-        Service authenticationService = Ssh.newService()
-        authenticationService.runInOrder {
+        Service sshService = Ssh.newService()
+        sshService.runInOrder {
             session(remote) {
                 // Copy files and set execution rights
                 put from: new File("src/resources/${commandInitializator.installerDirectory}"), into: "/"
