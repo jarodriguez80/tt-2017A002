@@ -38,15 +38,17 @@ class TaskHelper {
             }
         }
 
+        String sshOutput = ""
         sshService.run {
             settings {
                 pty = true
             }
             session(sshService.remotes.customRemote) {
-                def output = execute "lsblk -o  name,type,mountpoint,fstype,size -iP", pty: true
-                devices = parseLsblkOutput(output)
+                sshOutput = execute "lsblk -o  name,type,mountpoint,fstype,size -iP", pty: true
+
             }
         }
+        devices = parseLsblkOutput(sshOutput)
         devices
     }
 
